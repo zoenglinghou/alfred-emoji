@@ -1,7 +1,8 @@
-import glob
 import json
 import os
+import re
 import uuid
+from glob import glob
 from shutil import make_archive
 from urllib import request
 
@@ -9,6 +10,11 @@ from urllib import request
 class alfred_emoji(object):
     def __init__(self):
         self.URL = "https://github.com/iamcal/emoji-data/raw/master/emoji.json"
+        self.products_path = "./products"
+
+    def remove_old(self):
+        for old_snippet in glob(os.path.join(self.products_path, '*.json')):
+            os.remove(old_snippet)
 
     def get_data(self):
 
@@ -41,20 +47,22 @@ class alfred_emoji(object):
                 snippet["alfredsnippet"]["name"] = emoji["name"].lower()
             except AttributeError:
                 snippet["alfredsnippet"]["name"] = " ".join(
-                    emoji["short_name"].split("-"))
+                    re.split("-|_", emoji["short_name"]))
             snippet["alfredsnippet"]["keyword"] = emoji["short_name"]
 
-            filename = "./product/" + snippet["alfredsnippet"][
-                "name"] + " [" + snippet["alfredsnippet"]["uid"] + "].json"
+            filename = os.path.join(
+                self.products_path, snippet["alfredsnippet"]["name"] + " [" +
+                snippet["alfredsnippet"]["uid"] + "].json")
 
             with open(filename, "w") as fp:
                 json.dump(snippet, fp)
 
     def prepare_file(self):
-        make_archive("./alfred-emoji", "zip", "./product")
+        make_archive("./alfred-emoji", "zip", self.products_path)
         os.rename("./alfred-emoji.zip", "./alfred-emoji.alfredsnippets")
 
     def main(self):
+        self.remove_old()
         emoji_data = self.get_data()
         self.translate(emoji_data)
         self.prepare_file()
